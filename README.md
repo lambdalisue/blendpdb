@@ -1,19 +1,19 @@
-Blend
+blendpdb
 ===============================================================================
 
-Blend is a tool for mixing two different substance to make solvate such as 50%
+blendpdb is a tool for mixing two different substance to make solvate such as 50%
 Ethanol.
 
 Install
 -------------------------------------------------------------------------------
 Use pip or easy_install like
 
-  pip install blend
+  pip install blendpdb
 
 Usage
 -------------------------------------------------------------------------------
 
-    Usage: blend.py SUB_A SUB_B PERCENTAGE [options]
+    Usage: blendpdb SUB_A SUB_B PERCENTAGE [options]
 
     Blend PERCENTAGE (v/v) of SUB_B with SUB_A
 
@@ -21,8 +21,8 @@ Usage
     -h, --help            show this help message and exit
     -c FILE, --config=FILE
                             load configure from FILE (Default '.blendrc')
-    -i, --information     print calculation result
-    -n, --dry             do not create blended PDB ('-i' will automatically be
+    -v, --verbose         print informations
+    -n, --dry             do not create blended PDB ('-v' will automatically be
                             set)
     -o FILE, --output=FILE
                             output blended PDB into FILE (Default
@@ -43,4 +43,4 @@ To add different substance, create `blendrc` file in the working directory like
       molecular_weight: 100.04          # Molecular Weight (g/mol)
       pdb: tfe.pdb                      # PDB file indicate the substance
 
-Blend also try to load `.blendrc` file in your Home directory.
+blendpdb also try to load `.blendrc` file in your Home directory.

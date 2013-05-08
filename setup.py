@@ -10,7 +10,7 @@ def read(filename):
     return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
 setup(
-    name="Blend",
+    name="blendpdb",
     version=version,
     description = "Blending two PDB files to create solvate",
     long_description=read('README.md'),
@@ -22,14 +22,14 @@ setup(
     keywords = "blend, pdb, solvate",
     author = "Alisue",
     author_email = "lambdalisue@hashnote.net",
-    url=r"https://github.com/lambdalisue/blend",
-    download_url = r"https://github.com/lambdalisue/blend/tarball/master",
+    url=r"https://github.com/lambdalisue/blendpdb",
+    download_url = r"https://github.com/lambdalisue/blendpdb/tarball/master",
     license = 'MIT',
     packages = find_packages('src'),
     package_dir = {'': 'src'},
     entry_points = {
         'console_scripts': [
-            "blend = blend.blend:main",
+            "blendpdb = blendpdb.blendpdb:main",
         ]
     },
     include_package_data = True,

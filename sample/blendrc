@@ -1,10 +1,10 @@
 WAT:                                # Name
   longname: Water                   # Long name
-  density: 1000000                  # Density (g/m^3)
+  density: 1                        # Density (g/m^3)
   molecular_weight: 18.01           # Molecular Weight (g/mol)
   pdb: water.pdb                    # PDB file indicate the substance
 TFE:                                # Name
   longname: 2,2,2-Trifluoroethanol  # Long name
-  density: 1393000                  # Density (g/m^3)
+  density: 1.393                    # Density (g/m^3)
   molecular_weight: 100.04          # Molecular Weight (g/mol)
   pdb: tfe.pdb                      # PDB file indicate the substance

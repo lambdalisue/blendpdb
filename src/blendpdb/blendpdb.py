@@ -14,8 +14,8 @@ from optparse import OptionParser
 
 DEFAULT_CONFIGFILE = '~/.blendrc'
 DEFAULT_SUBSTANCES = (
-    ('WAT', 'Water', 1000000, 18.01, 'water.pdb'),
-    ('TFE', '2,2,2-Trifluoroethanol', 1393000, 100.04, 'tfe.pdb'),
+    ('WAT', 'Water', 1.0, 18.01, 'water.pdb'),
+    ('TFE', '2,2,2-Trifluoroethanol', 1.393, 100.04, 'tfe.pdb'),
 )
 
 PACKMOL_TEMPLATE = """
@@ -43,19 +43,43 @@ end structure
 Na = Decimal('6.02e+23')
 
 class Substance(object):
+    """Substance class
+
+    Property:
+        coefficient -- density / molecular_weight
+
+    Class method:
+        find -- find the substance class registered by name
+        register -- register new substance
+        unregister -- remove the substance from the registration
+    """
     def __init__(self, name, longname, density, molecular_weight, pdb):
+        """Constructor
+
+        Argument:
+            name -- name of the substance
+            longname -- full name of the substance
+            density -- density of the substance (g/cm^3)
+            molecular_weight -- molecular_weight of the substance (g/mol)
+            pdb -- relative or absolute path of pdb
+        """
         self.name = name
         self.longname = longname
-        self.density = Decimal(str(density))                    # g/m^3
+        self.density = Decimal(str(density))                    # g/cm^3
         self.molecular_weight = Decimal(str(molecular_weight))  # g/mol
         self.pdb = pdb
 
     @property
     def coefficient(self):
-        return self.density / self.molecular_weight
+        """coefficient [mol/m^3]"""
+        if not hasattr(self, '_coefficient'):
+            # [g/cm^3] * 10^6 / [g/mol] = [mol/m^3]
+            self._coefficient = self.density * 10**6 / self.molecular_weight
+        return self._coefficient
 
     @classmethod
     def find(cls, name):
+        """find the instance of substance from name"""
         if hasattr(cls, '_substances') and name in cls._substances:
             return cls._substances[name]
         raise Exception("Substance name '%s' is not registered. Use '.blendrc'"
@@ -88,13 +112,19 @@ def load_substances(filename, encoding='utf-8', register=True):
     except:
         raise Warning("To enable loading configure file, install PyYAML")
 
+    dirname = os.path.dirname(filename)
+
     def create_substance(name, data):
+        pdb = data['pdb']
+        if not os.path.isabs(pdb):
+            # convert to absolute path
+            pdb = os.path.normpath(os.path.join(dirname, pdb))
         return Substance(
                 name=name,
                 longname=data['longname'],
                 density=data['density'],
                 molecular_weight=data['molecular_weight'],
-                pdb=data['pdb'],
+                pdb=pdb
             )
     subs = yaml.load(open(filename, 'rb').read().decode(encoding))
     substances = []
@@ -173,20 +203,33 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
     if os.path.exists(DEFAULT_CONFIGFILE):
         load_substance(DEFAULT_CONFIGFILE)
         if opts.verbose:
-            print "'%s' config file is loaded" % DEFAULT_CONFIGFILE
+            print "+ Loaded: '%s'" % DEFAULT_CONFIGFILE
     # Load custom substances
     if os.path.exists(opts.config):
         load_substances(opts.config)
         if opts.verbose:
-            print "'%s' config file is loaded" % opts.config
+            print "+ Loaded: '%s'" % opts.config
     if opts.verbose:
-        print
-        print "The following substances are registered"
-        print "----------------------------------------------------------------"
-        print "Name", "Long-name", "Density", "Molecular weight", "PDB"
-        print "----------------------------------------------------------------"
-        for s in Substance._substances.values():
-            print s.name, s.longname, s.density, s.molecular_weight, s.pdb
+        bar_length = 80
+        try:
+            from tabulate import tabulate
+            substance_table = []
+            for s in Substance._substances.values():
+                substance_table.append((
+                    s.name, s.longname, s.density,
+                    s.molecular_weight, s.pdb))
+            substance_headers = (
+                    'Name', 'Long-name', 'Density (g/cm^3)',
+                    'Molecular Weight (g/mol)', 'PDB File')
+            table = tabulate(substance_table, headers=substance_headers)
+            bar_length = len(table.split("\n")[1])
+            print
+            print "=" * bar_length
+            print "Available substance list".center(bar_length)
+            print "=" * bar_length
+            print table
+        except ImportError:
+            raise Warning("`tabulate` is required to be installed")
 
     # Find substance
     lhs = Substance.find(lhs)
@@ -194,26 +237,20 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
 
     # Calculate the required number of molecules
     lhs_n, rhs_n = blend(lhs, rhs, percentage)
-    # Estimate required volume (Angstrom)
+    # Estimate required volume (meter -> Angstrom)
     lhs_v = Decimal(str(lhs_n)) / lhs.coefficient / Na * 10**30
     rhs_v = Decimal(str(rhs_n)) / rhs.coefficient / Na * 10**30
     sidel = math.pow(lhs_v + rhs_v, 1.0/3.0)
 
     if opts.verbose:
         print
-        print "===================================================================="
-        print "To create %s%% (v/v) of %s with %s," % (
-                percentage, rhs.longname, lhs.longname)
-        print "you need following each molecules"
-        print
+        print "=" * bar_length
+        print ("%s%% (v/v) of %s with %s," % (percentage, rhs.longname,
+            lhs.longname)).center(bar_length)
+        print "=" * bar_length
         print "%s:" % lhs.name, int(lhs_n), "molecules", "(%s)" % lhs.longname
         print "%s:" % rhs.name, int(rhs_n), "molecules", "(%s)" % rhs.longname
-        print
-        print "The estimated minimum bounding box of the mixture is"
-        print
-        print "BOX:", "%f A^3" % sidel
-        print
-        print "===================================================================="
+        print "BOX:", "%f A^3" % sidel, "(Estimated minimum bounding box)"
 
     # Create packmol input file
     kwargs = {
@@ -232,14 +269,12 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
     }
     packmol = PACKMOL_TEMPLATE % kwargs
 
-    if opts.verbose:
-        print
-        print "===================================================================="
-        print "The following content is passed to packmol"
-        print
-        print packmol
-        print
-        print "===================================================================="
+    #if opts.verbose:
+    #    print
+    #    print "===================================================================="
+    #    print "The following content is passed to packmol"
+    #    print packmol
+    #    print "===================================================================="
 
 
     # Execute packmol to create PDB file
@@ -251,7 +286,8 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
         p.communicate(packmol)
         p.stdin.close()
         if opts.verbose:
-            print "'%s' is created." % opts.output
+            print
+            print "+ Created: '%s'" % opts.output
 
 if __name__ == '__main__':
     main()

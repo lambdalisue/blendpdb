@@ -136,7 +136,7 @@ def load_substances(filename, encoding='utf-8', register=True):
     return substances
 
 
-def blend(a, b, percentage):
+def blend(a, b, percentage, min_total=500):
     # determine lhs, rhs
     if a.coefficient > b.coefficient:
         lhs = a
@@ -146,17 +146,17 @@ def blend(a, b, percentage):
     else:
         lhs = b
         rhs = a
-        percentage = Decimal(100 - percentage)
+        percentage = Decimal(100) - Decimal(percentage)
         reverse = True
     # find minimum numbers required
-    k = percentage / (100 - percentage)
-    m = lhs.coefficient / rhs.coefficient
+    k = (100 - percentage) / percentage
+    m = rhs.coefficient / lhs.coefficient
     diff = lambda x: abs(round(x) - float(x))
     lhs_n = 1
     rhs_n = 0
     while True:
         rhs_n = k * m * lhs_n
-        if rhs_n > 1 and diff(rhs_n) < 0.1:
+        if diff(rhs_n) < 0.1 and rhs_n+lhs_n > min_total:
             break
         lhs_n += 1
     rhs_n = round(rhs_n)
@@ -177,6 +177,9 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
             help="print informations")
     parser.add_option('-n', '--dry', action='store_true', default=False,
             help="do not create blended PDB ('-v' will automatically be set)")
+    parser.add_option('-m', '--min-total', metavar='TOTAL', default=500,
+            type='int',
+            help="minimum total number of molecules (Default 500)")
     parser.add_option('-o', '--output', metavar='FILE',
             help="output blended PDB into FILE (Default "
                  "<PERCENTAGE>p_<SUB_B>.pdb)")
@@ -236,7 +239,7 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
     rhs = Substance.find(rhs)
 
     # Calculate the required number of molecules
-    lhs_n, rhs_n = blend(lhs, rhs, percentage)
+    lhs_n, rhs_n = blend(lhs, rhs, percentage, opts.min_total)
     # Estimate required volume (meter -> Angstrom)
     lhs_v = Decimal(str(lhs_n)) / lhs.coefficient / Na * 10**30
     rhs_v = Decimal(str(rhs_n)) / rhs.coefficient / Na * 10**30
@@ -281,8 +284,8 @@ Blend PERCENTAGE (v/v) of SUB_B with SUB_A"""
     if not opts.dry:
         p = subprocess.Popen('packmol',
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
+                stdout=subprocess.PIPE)
+                #stderr=subprocess.STDOUT)
         p.communicate(packmol)
         p.stdin.close()
         if opts.verbose:

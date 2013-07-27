@@ -3,7 +3,7 @@
 import sys
 from setuptools import setup, find_packages
 
-version = "0.1.2"
+version = "0.1.3"
 
 def read(filename):
     import os.path
@@ -29,7 +29,7 @@ setup(
     package_dir = {'': 'src'},
     entry_points = {
         'console_scripts': [
-            "blendpdb = blendpdb.blendpdb:main",
+            "blendpdb = blendpdb.main:blendpdb",
         ]
     },
     include_package_data = True,
